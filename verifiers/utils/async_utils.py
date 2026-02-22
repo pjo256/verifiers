@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+from collections import deque
 from collections.abc import Coroutine
 from time import perf_counter
 from typing import Any, AsyncContextManager, Callable, Optional, TypeVar
@@ -74,7 +75,7 @@ class EventLoopLagMonitor:
         self.logger = logger or logging.getLogger(
             f"{__name__}.{self.__class__.__name__}"
         )
-        self.lags: list[float] = []
+        self.lags: deque[float] = deque(maxlen=max_measurements)
         self.logger.debug(
             f"Event loop lag monitor initialized with measure_interval={self.measure_interval} and max_measurements={self.max_measurements}"
         )
@@ -88,16 +89,14 @@ class EventLoopLagMonitor:
         return lag
 
     def reset(self):
-        """Reset the list of measured event loop lags."""
-        self.lags = []
+        """Reset the measured event loop lags."""
+        self.lags.clear()
 
     async def run(self):
         """Loop to measure event loop lag. Should be started as background task."""
         while True:
             lag = await self.measure_lag()
             self.lags.append(lag)
-            if len(self.lags) > self.max_measurements:
-                self.lags.pop(0)
 
     def run_in_background(self):
         """Run the event loop lag monitor as a background task."""
